@@ -68,11 +68,16 @@ func main() {
 
 	}
 
-	codeMap := mapLetterTree(letterCount)
-	fmt.Println(codeMap)
+	var treeRoot btree
+	codeMap := mapLetterTree(letterCount, &treeRoot)
+	serializedTree := serializeTree(&treeRoot)
 
 	fIn.Seek(0, 0)
+
 	var binString strings.Builder
+	//adiciona uma representacao serializada da arvore binaria como header do arquivo
+	binString.WriteString(buildHeader(serializedTree))
+
 	for {
 		_, err = fIn.Read(buffer)
 		if err != nil {
@@ -140,10 +145,9 @@ func insertIntoStack(nodeStack []btree, node btree) []btree {
 	}
 }
 
-func mapLetterTree(letterArr map[string]int) map[string]string {
+func mapLetterTree(letterArr map[string]int, treeRoot *btree) map[string]string {
 
 	nodeStack := make([]btree, 0)
-	var treeRoot btree
 
 	//cria uma priority queue em ordem crescente de ocorrencias de letras
 	for symbol, weight := range letterArr {
@@ -159,7 +163,7 @@ func mapLetterTree(letterArr map[string]int) map[string]string {
 	//ate que nao reste nenhum node na queue
 	for {
 		if len(nodeStack) <= 1 {
-			treeRoot = nodeStack[0]
+			*treeRoot = nodeStack[0]
 			break
 		}
 		stackTop := len(nodeStack) - 1
@@ -178,12 +182,9 @@ func mapLetterTree(letterArr map[string]int) map[string]string {
 
 	symbolCodeMap := make(map[string]string)
 	currCode := ""
-	getSymbolCodeArr(currCode, &treeRoot, symbolCodeMap)
-
-	fmt.Println(serializeTree(&treeRoot))
+	getSymbolCodeArr(currCode, treeRoot, symbolCodeMap)
 
 	return symbolCodeMap
-
 }
 
 func getSymbolCodeArr(currCode string, node *btree, codeMap map[string]string) {
@@ -252,4 +253,19 @@ func serializeTree(treeNode *btree) string {
 	}
 
 	return stringRepresentation + serializeTree(treeNode.left) + serializeTree(treeNode.rigth)
+}
+
+func buildHeader(headerContent string) string {
+	var header strings.Builder
+	headerEnd := "ENDHEADER"
+
+	for _, r := range headerContent {
+		fmt.Fprintf(&header, "%08b", int64(r))
+	}
+
+	for _, r := range headerEnd {
+		fmt.Fprintf(&header, "%08b", int64(r))
+	}
+
+	return header.String()
 }
